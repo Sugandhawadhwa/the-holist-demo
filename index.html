@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Holist - Clinical Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    * { scrollbar-width: thin; scrollbar-color: #374151 #1f2937; }
+    *::-webkit-scrollbar { width: 8px; }
+    *::-webkit-scrollbar-track { background: #1f2937; }
+    *::-webkit-scrollbar-thumb { background-color: #374151; border-radius: 4px; }
+    input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #6366f1; cursor: pointer; }
+    input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: #6366f1; cursor: pointer; border: none; }
+  </style>
+</head>
+<body class="bg-gray-950">
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useCallback, useEffect } = React;
+
+    // Icons
+    const I = {
+      User: ({s=20,c=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={c}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
+      Users: ({s=20,c=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={c}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+      Brain: ({s=20,c=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={c}><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/></svg>,
+      Hand: ({s=20,c=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={c}><path d="M11 14h2a2 2 0 1 0 0-4h-3c-.6 0-1.1.2-1.4.6L3 16m4 4 1.6-1.4c.3-.4.8-.6 1.4-.6h4c1.1 0 2.1-.4 2.8-1.2l4.6-4.4a2 2 0 0 0-2.75-2.91l-4.2 3.9M2 15l6 6M19.5 8.5c.7-.7 1.5-1.6 1.5-2.7A2.73 2.73 0 0 0 16 4a2.78 2.78 0 0 0-5 1.8c0 1.2.8 2 1.5 2.8L16 12Z"/></svg>,
+      Book: ({s=20,c=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={c}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>,
+      Plus: ({s=20,c=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={c}><path d="M5 12h14M12 5v14"/></svg>,
+      X: ({s=20,c=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={c}><path d="M18 6 6 18M6 6l12 12"/></svg>,
+      Search: ({s=20,c=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={c}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>,
+      ChevDown: ({s=20,c=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={c}><path d="m6 9 6 6 6-6"/></svg>,
+      ChevRight: ({s=20,c=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={c}><path d="m9 18 6-6-6-6"/></svg>,
+      Shield: ({s=20,c=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={c}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg>,
+      Heart: ({s=20,c=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={c}><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>,
+      Zap: ({s=20,c=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={c}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>,
+      Target: ({s=20,c=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={c}><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>,
+      Compass: ({s=20,c=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={c}><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>,
+      Layers: ({s=20,c=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={c}><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>,
+      Rotate: ({s=20,c=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={c}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>,
+      File: ({s=20,c=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={c}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>,
+      Bulb: ({s=20,c=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={c}><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6M10 22h4"/></svg>,
+      Help: ({s=20,c=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={c}><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/></svg>,
+      Alert: ({s=20,c=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={c}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4M12 17h.01"/></svg>,
+      Check: ({s=20,c=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={c}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg>,
+      Activity: ({s=20,c=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={c}><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>,
+      Download: ({s=20,c=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={c}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>,
+      Folder: ({s=20,c=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={c}><path d="m6 14 1.45-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.55 6a2 2 0 0 1-1.94 1.5H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h3.93a2 2 0 0 1 1.66.9l.82 1.2a2 2 0 0 0 1.66.9H18a2 2 0 0 1 2 2v2"/></svg>,
+      Trash: ({s=20,c=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={c}><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>,
+      Sq: ({s=20,c="",f=false}) => <svg xmlns="http://www.w3.org/2000/svg" width={s} height={s} viewBox="0 0 24 24" fill={f?"currentColor":"none"} stroke="currentColor" strokeWidth="2" className={c}><rect width="18" height="18" x="3" y="3" rx="2"/></svg>,
+      Circ: ({s=20,c="",f=false}) => <svg xmlns="http://www.w3.org/2000/svg" width={s} height={s} viewBox="0 0 24 24" fill={f?"currentColor":"none"} stroke="currentColor" strokeWidth="2" className={c}><circle cx="12" cy="12" r="10"/></svg>,
+      Tri: ({s=20,c="",f=false}) => <svg xmlns="http://www.w3.org/2000/svg" width={s} height={s} viewBox="0 0 24 24" fill={f?"currentColor":"none"} stroke="currentColor" strokeWidth="2" className={c}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/></svg>,
+      Grip: ({s=20,c=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={c}><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>,
+    };
+
+    // Data
+    const INTERVENTIONS = [
+      { cat: "Anxiety", tools: [{id:'a1',name:"Worry Time",mod:"CBT",desc:"30-min worry window"},{id:'a2',name:"5-4-3-2-1",mod:"Somatic",desc:"Grounding for panic"},{id:'a3',name:"Interoceptive Exposure",mod:"CBT",desc:"Reduce symptom fear"},{id:'a4',name:"Defusion",mod:"ACT",desc:"Distance from thoughts"}]},
+      { cat: "Depression", tools: [{id:'d1',name:"Behavioral Activation",mod:"CBT",desc:"Schedule activities"},{id:'d2',name:"Values Card Sort",mod:"ACT",desc:"Identify core values"},{id:'d3',name:"Two-Chair",mod:"EFT",desc:"Critic vs Self"}]},
+      { cat: "Trauma", tools: [{id:'t1',name:"Container",mod:"EMDR",desc:"Vault for memories"},{id:'t2',name:"Window of Tolerance",mod:"Polyvagal",desc:"Map arousal"},{id:'t3',name:"Parts Work",mod:"IFS",desc:"Dialogue with parts"}]},
+      { cat: "Relational", tools: [{id:'r1',name:"I-Statements",mod:"Comm",desc:"Express without blame"},{id:'r2',name:"Empty Chair",mod:"Gestalt",desc:"Unfinished business"},{id:'r3',name:"Externalizing",mod:"Narrative",desc:"Separate from problem"}]},
+      { cat: "Schema", tools: [{id:'s1',name:"Schema Flashcard",mod:"ST",desc:"Challenge EMS"},{id:'s2',name:"Mode Dialogue",mod:"ST",desc:"Chair work"}]},
+      { cat: "Regulation", tools: [{id:'e1',name:"TIPP",mod:"DBT",desc:"Crisis skills"},{id:'e2',name:"Opposite Action",mod:"DBT",desc:"Act opposite to urge"}]}
+    ];
+
+    const SCHEMAS = [
+      {dom:"Disconnection",list:["Abandonment","Mistrust","Deprivation","Defectiveness","Isolation"]},
+      {dom:"Impaired Autonomy",list:["Dependence","Vulnerability","Enmeshment","Failure"]},
+      {dom:"Impaired Limits",list:["Entitlement","Insufficient Control"]},
+      {dom:"Other-Directed",list:["Subjugation","Self-Sacrifice","Approval-Seeking"]},
+      {dom:"Overvigilance",list:["Negativity","Inhibition","Unrelenting Standards","Punitiveness"]}
+    ];
+
+    const ACT = [{id:'accept',n:'Acceptance',o:'Avoidance'},{id:'defuse',n:'Defusion',o:'Fusion'},{id:'present',n:'Present Moment',o:'Past/Future'},{id:'self',n:'Self-as-Context',o:'Conceptualized Self'},{id:'values',n:'Values',o:'Unclear Values'},{id:'action',n:'Committed Action',o:'Inaction'}];
+    const IPT = [{id:'grief',n:'Complicated Grief',d:'Unresolved mourning'},{id:'disputes',n:'Role Disputes',d:'Conflicts'},{id:'transitions',n:'Role Transitions',d:'Life changes'},{id:'deficits',n:'Interpersonal Deficits',d:'Loneliness'}];
+
+    const newClient = () => ({
+      id: Date.now().toString(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+      name:'', age:'', pronouns:'', living:'', occupation:'',
+      mse:{affectRange:50,mood:50,speech:[],thoughtProcess:[],thoughtContent:[],perception:[],insight:'fair',judgment:'fair'},
+      safety:{si:'none',hi:'none',sh:'none',plan:false,intent:false,means:false,risk:'low'},
+      complaints:[], family:[], relationships:[], framework:'cbt',
+      concept:{cbt:{situation:'',thought:'',emotion:'',behavior:''},psychodynamic:{defense:'',anxiety:'',hidden:''},narrative:{dominant:'',alternative:''},systemic:{patterns:[]},act:{avoided:'',avoidance:''},ifs:{managers:'',exiles:'',firefighters:'',self:''},schema:{schemas:[]},eft:{primary:'',secondary:'',markers:[]},ipt:{area:'',inventory:''}},
+      plan:[], reflections:[]
+    });
+
+    // PDF Generator
+    const genPDF = (d) => {
+      const {jsPDF} = window.jspdf;
+      const doc = new jsPDF();
+      let y = 20;
+      const chk = (n=20) => { if(y+n>280){doc.addPage();y=20;} };
+      const sec = (t) => { chk(25);y+=5;doc.setFillColor(99,102,241);doc.rect(20,y-5,170,8,'F');doc.setTextColor(255,255,255);doc.setFontSize(12);doc.setFont(undefined,'bold');doc.text(t,23,y);doc.setTextColor(0,0,0);doc.setFont(undefined,'normal');doc.setFontSize(11);y+=10; };
+      const fld = (l,v) => { if(!v||(Array.isArray(v)&&v.length===0))return;chk();doc.setFont(undefined,'bold');doc.text(`${l}: `,20,y);doc.setFont(undefined,'normal');const s=doc.splitTextToSize(Array.isArray(v)?v.join(', '):String(v),130);doc.text(s,55,y);y+=7*Math.max(s.length,1); };
+
+      doc.setFillColor(30,30,46);doc.rect(0,0,220,40,'F');doc.setTextColor(255,255,255);doc.setFontSize(24);doc.setFont(undefined,'bold');doc.text('The Holist',20,20);doc.setFontSize(12);doc.setFont(undefined,'normal');doc.text('Clinical Case Report',20,30);doc.text(`Generated: ${new Date().toLocaleDateString()}`,140,30);doc.setTextColor(0,0,0);y=50;
+
+      sec('DEMOGRAPHICS');
+      fld('Name',d.name||'Not specified');fld('Age',d.age);fld('Pronouns',d.pronouns);fld('Living',d.living);fld('Occupation',d.occupation);
+
+      sec('MENTAL STATUS EXAMINATION');
+      fld('Affect',`${d.mse.affectRange<30?'Flat':d.mse.affectRange>70?'Labile':'Full Range'} (${d.mse.affectRange}/100)`);
+      fld('Mood',`${d.mse.mood<30?'Dysthymic':d.mse.mood>70?'Euphoric':'Euthymic'} (${d.mse.mood}/100)`);
+      fld('Speech',d.mse.speech);fld('Thought Process',d.mse.thoughtProcess);fld('Thought Content',d.mse.thoughtContent);fld('Perception',d.mse.perception);fld('Insight',d.mse.insight);fld('Judgment',d.mse.judgment);
+
+      sec('SAFETY ASSESSMENT');
+      fld('Suicidal Ideation',d.safety.si);fld('Homicidal Ideation',d.safety.hi);fld('Self-Harm',d.safety.sh);
+      fld('Plan',d.safety.plan?'YES':'No');fld('Intent',d.safety.intent?'YES':'No');fld('Means',d.safety.means?'YES':'No');fld('Risk Level',d.safety.risk.toUpperCase());
+
+      if(d.complaints.length>0){sec('PRESENTING COMPLAINTS');fld('Symptoms',d.complaints);}
+
+      sec(`CONCEPTUALIZATION (${d.framework.toUpperCase()})`);
+      const c=d.concept[d.framework];
+      if(d.framework==='cbt'){fld('Situation',c.situation);fld('Thought',c.thought);fld('Emotion',c.emotion);fld('Behavior',c.behavior);}
+      else if(d.framework==='psychodynamic'){fld('Defense',c.defense);fld('Anxiety',c.anxiety);fld('Hidden Feeling',c.hidden);}
+      else if(d.framework==='narrative'){fld('Dominant Story',c.dominant);fld('Alternative Story',c.alternative);}
+      else if(d.framework==='act'){fld('Avoided Experiences',c.avoided);fld('Avoidance Behaviors',c.avoidance);}
+      else if(d.framework==='ifs'){fld('Managers',c.managers);fld('Exiles',c.exiles);fld('Firefighters',c.firefighters);fld('Self',c.self);}
+      else if(d.framework==='schema'){fld('Schemas',c.schemas);}
+      else if(d.framework==='eft'){fld('Primary Emotions',c.primary);fld('Secondary Emotions',c.secondary);fld('Markers',c.markers);}
+      else if(d.framework==='ipt'){fld('Problem Area',c.area);fld('Inventory',c.inventory);}
+
+      if(d.plan.length>0){sec('TREATMENT PLAN');d.plan.forEach((item,i)=>{chk(15);fld(`${i+1}. ${item.name}`,`(${item.mod}) - ${item.progress}%`);if(item.notes)fld('Notes',item.notes);});}
+
+      if(d.reflections.length>0){sec('REFLECTIONS');d.reflections.forEach(r=>{chk(20);doc.setFont(undefined,'italic');doc.text(`${new Date(r.timestamp).toLocaleDateString()} - ${r.tags.join(', ')||'No tags'}`,20,y);y+=7;doc.setFont(undefined,'normal');const s=doc.splitTextToSize(r.text,170);doc.text(s,20,y);y+=7*s.length+5;});}
+
+      doc.setFontSize(9);doc.setTextColor(128,128,128);doc.text('Generated by The Holist | Confidential',20,290);
+      doc.save(`${d.name||'Client'}_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+    };
+
+    // Main App
+    function App() {
+      const [clients,setClients] = useState(() => {try{return JSON.parse(localStorage.getItem('holist_clients'))||[];}catch{return[];}});
+      const [curId,setCurId] = useState(() => localStorage.getItem('holist_cur')||null);
+      const [tab,setTab] = useState('profile');
+      const [showList,setShowList] = useState(false);
+
+      const cur = clients.find(c=>c.id===curId)||null;
+
+      useEffect(()=>{localStorage.setItem('holist_clients',JSON.stringify(clients));},[clients]);
+      useEffect(()=>{if(curId)localStorage.setItem('holist_cur',curId);},[curId]);
+
+      const create = () => {const n=newClient();setClients(p=>[...p,n]);setCurId(n.id);setShowList(false);};
+      const del = (id) => {if(confirm('Delete this client?')){setClients(p=>p.filter(c=>c.id!==id));if(curId===id){const r=clients.filter(c=>c.id!==id);setCurId(r.length?r[0].id:null);}}};
+      const upd = useCallback((path,val)=>{setClients(p=>p.map(c=>{if(c.id!==curId)return c;const cp=JSON.parse(JSON.stringify(c));cp.updatedAt=new Date().toISOString();const k=path.split('.');let x=cp;for(let i=0;i<k.length-1;i++)x=x[k[i]];x[k[k.length-1]]=val;return cp;}));},[curId]);
+
+      const tabs=[{id:'profile',l:'Profile & MSE',i:I.User,s:'The Face'},{id:'family',l:'Family Systems',i:I.Users,s:'The System'},{id:'concept',l:'Conceptualization',i:I.Brain,s:'The Brain'},{id:'interventions',l:'Interventions',i:I.Hand,s:'The Hands'},{id:'reflections',l:'Reflections',i:I.Book,s:'The Mirror'}];
+
+      if(!cur) return (
+        <div className="min-h-screen bg-gray-950 text-gray-100 flex items-center justify-center">
+          <div className="max-w-lg w-full p-8">
+            <div className="text-center mb-8"><h1 className="text-4xl font-light text-white mb-2">The Holist</h1><p className="text-gray-500">Clinical Dashboard</p></div>
+            <button onClick={create} className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-lg font-medium mb-6"><I.Plus s={24}/>Create New Client</button>
+            {clients.length>0&&(<div className="bg-gray-900/50 rounded-xl border border-gray-800 p-4"><h3 className="text-sm font-medium text-gray-400 mb-3">Existing Clients ({clients.length})</h3><div className="space-y-2 max-h-64 overflow-y-auto">{clients.map(c=>(<div key={c.id} className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg hover:bg-gray-800"><button onClick={()=>setCurId(c.id)} className="flex-1 text-left"><div className="font-medium text-gray-200">{c.name||'Unnamed'}</div><div className="text-xs text-gray-500">Updated: {new Date(c.updatedAt).toLocaleDateString()}</div></button><button onClick={()=>del(c.id)} className="p-2 text-gray-500 hover:text-red-400"><I.Trash s={16}/></button></div>))}</div></div>)}
+          </div>
+        </div>
+      );
+
+      return (
+        <div className="min-h-screen bg-gray-950 text-gray-100 flex">
+          <aside className="w-64 bg-gray-900 border-r border-gray-800 flex flex-col">
+            <div className="p-4 border-b border-gray-800"><h1 className="text-xl font-light text-white">The Holist</h1><p className="text-xs text-gray-500 uppercase tracking-widest">Clinical Dashboard</p></div>
+            <div className="p-4 border-b border-gray-800">
+              <button onClick={()=>setShowList(!showList)} className="w-full flex items-center justify-between p-3 bg-gray-800/50 rounded-lg hover:bg-gray-800">
+                <div className="flex items-center gap-2 text-left"><I.Folder s={18} c="text-indigo-400"/><div><div className="text-sm font-medium text-gray-200 truncate max-w-[130px]">{cur.name||'Unnamed'}</div><div className="text-xs text-gray-500">Current Client</div></div></div>
+                <I.ChevDown s={16} c={`text-gray-400 transition-transform ${showList?'rotate-180':''}`}/>
+              </button>
+              {showList&&(<div className="mt-2 bg-gray-800 rounded-lg border border-gray-700 overflow-hidden"><button onClick={create} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-indigo-400 hover:bg-gray-700"><I.Plus s={14}/>New Client</button><div className="max-h-48 overflow-y-auto">{clients.map(c=>(<button key={c.id} onClick={()=>{setCurId(c.id);setShowList(false);}} className={`w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-gray-700 ${c.id===curId?'bg-indigo-600/20 text-indigo-400':'text-gray-300'}`}><span className="truncate">{c.name||'Unnamed'}</span>{c.id===curId&&<span className="text-xs">✓</span>}</button>))}</div></div>)}
+            </div>
+            <nav className="flex-1 p-4 space-y-2">{tabs.map(t=>(<button key={t.id} onClick={()=>setTab(t.id)} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${tab===t.id?'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30':'text-gray-400 hover:bg-gray-800'}`}><t.i s={20}/><div className="text-left"><div className="text-sm font-medium">{t.l}</div><div className="text-xs opacity-60">{t.s}</div></div></button>))}</nav>
+            <div className="p-4 border-t border-gray-800"><button onClick={()=>genPDF(cur)} className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-medium"><I.Download s={18}/>Download PDF</button></div>
+            <div className="p-4 border-t border-gray-800 text-xs text-gray-600 text-center">Auto-saves locally</div>
+          </aside>
+          <main className="flex-1 overflow-auto">
+            {tab==='profile'&&<Profile d={cur} u={upd}/>}
+            {tab==='family'&&<Family d={cur} u={upd}/>}
+            {tab==='concept'&&<Concept d={cur} u={upd}/>}
+            {tab==='interventions'&&<Interventions d={cur} u={upd}/>}
+            {tab==='reflections'&&<Reflect d={cur} u={upd}/>}
+          </main>
+        </div>
+      );
+    }
+
+    // Profile
+    function Profile({d,u}){
+      const [c,setC]=useState('');
+      const add=()=>{if(c.trim()){u('complaints',[...d.complaints,c.trim()]);setC('');}};
+      const sp=['Normal','Pressured','Poverty','Loud','Soft','Rapid','Slow'];
+      const tp=['Linear','Circumstantial','Tangential','Loose','Flight of Ideas'];
+      const tc=['Delusions','Obsessions','Phobias','Paranoia','Preoccupations'];
+      const pe=['Auditory Halluc.','Visual Halluc.','Depersonalization','Derealization','None'];
+      return(
+        <div className="p-8 space-y-8">
+          <header><h2 className="text-3xl font-light text-white mb-2">Profile & MSE</h2></header>
+          <Card t="Demographics" i={I.User}><div className="grid grid-cols-3 gap-6"><Inp l="Name" v={d.name} o={v=>u('name',v)}/><Inp l="Age" v={d.age} o={v=>u('age',v)} t="number"/><Inp l="Pronouns" v={d.pronouns} o={v=>u('pronouns',v)}/><Inp l="Living Situation" v={d.living} o={v=>u('living',v)}/><Inp l="Occupation" v={d.occupation} o={v=>u('occupation',v)}/></div></Card>
+          <Card t="Mental Status" i={I.Activity}><div className="space-y-6"><div className="grid grid-cols-2 gap-8"><Sld l="Affect Range" v={d.mse.affectRange} o={v=>u('mse.affectRange',v)} a="Flat" b="Full" c="Labile"/><Sld l="Mood" v={d.mse.mood} o={v=>u('mse.mood',v)} a="Dysthymic" b="Euthymic" c="Euphoric"/></div><div className="grid grid-cols-2 gap-8"><Tg l="Speech" op={sp} sel={d.mse.speech} o={v=>u('mse.speech',v)}/><Tg l="Thought Process" op={tp} sel={d.mse.thoughtProcess} o={v=>u('mse.thoughtProcess',v)}/></div><div className="grid grid-cols-2 gap-8"><Tg l="Thought Content" op={tc} sel={d.mse.thoughtContent} o={v=>u('mse.thoughtContent',v)}/><Tg l="Perception" op={pe} sel={d.mse.perception} o={v=>u('mse.perception',v)}/></div><div className="grid grid-cols-4 gap-6"><Sel l="Insight" v={d.mse.insight} o={v=>u('mse.insight',v)} op={['good','fair','limited','poor','absent']}/><Sel l="Judgment" v={d.mse.judgment} o={v=>u('mse.judgment',v)} op={['good','fair','impaired','poor']}/></div></div></Card>
+          <Card t="Safety Assessment" i={I.Shield} w><div className="grid grid-cols-3 gap-6 mb-4"><Sel l="Suicidal Ideation" v={d.safety.si} o={v=>u('safety.si',v)} op={['none','passive','active-no plan','active-with plan']}/><Sel l="Homicidal Ideation" v={d.safety.hi} o={v=>u('safety.hi',v)} op={['none','passive','active-no plan','active-with plan']}/><Sel l="Self-Harm" v={d.safety.sh} o={v=>u('safety.sh',v)} op={['none','historical','recent','current']}/></div><div className="flex gap-6 mb-4">{['plan','intent','means'].map(k=>(<label key={k} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={d.safety[k]} onChange={e=>u(`safety.${k}`,e.target.checked)} className="rounded bg-gray-800 border-gray-600 text-red-500"/><span className={d.safety[k]?'text-red-400':'text-gray-400'}>{k.charAt(0).toUpperCase()+k.slice(1)}</span></label>))}</div><div className="p-4 rounded-lg bg-gray-800/50 border border-gray-700"><div className="flex items-center justify-between"><span className="text-sm text-gray-400">Risk Level</span><div className="flex gap-2">{['low','moderate','high','imminent'].map(l=>(<button key={l} onClick={()=>u('safety.risk',l)} className={`px-3 py-1 text-xs rounded-full ${d.safety.risk===l?(l==='low'?'bg-green-600':l==='moderate'?'bg-yellow-600':l==='high'?'bg-orange-600':'bg-red-600')+' text-white':'bg-gray-700 text-gray-400'}`}>{l.charAt(0).toUpperCase()+l.slice(1)}</button>))}</div></div></div></Card>
+          <Card t="Presenting Complaints" i={I.File}><div className="flex gap-3 mb-4"><input value={c} onChange={e=>setC(e.target.value)} onKeyPress={e=>e.key==='Enter'&&add()} placeholder="Add symptom..." className="flex-1 px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-200 placeholder-gray-500"/><button onClick={add} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg"><I.Plus s={20}/></button></div><div className="flex flex-wrap gap-2">{d.complaints.map((x,i)=>(<span key={i} className="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-600/20 text-indigo-400 rounded-full text-sm border border-indigo-500/30">{x}<button onClick={()=>u('complaints',d.complaints.filter((_,j)=>j!==i))}><I.X s={14}/></button></span>))}</div></Card>
+        </div>
+      );
+    }
+
+    // Family
+    function Family({d,u}){
+      const [sel,setSel]=useState(null);
+      const [drw,setDrw]=useState(null);
+      const [rt,setRt]=useState('close');
+      const addM=t=>{const m={id:Date.now(),type:t,name:'',age:'',notes:'',x:200+Math.random()*300,y:100+Math.random()*200,isClient:false};u('family',[...d.family,m]);setSel(m.id);};
+      const updM=(id,f,v)=>u('family',d.family.map(m=>m.id===id?{...m,[f]:v}:m));
+      const delM=id=>{u('family',d.family.filter(m=>m.id!==id));u('relationships',d.relationships.filter(r=>r.from!==id&&r.to!==id));setSel(null);};
+      const click=id=>{if(drw){if(drw!==id)u('relationships',[...d.relationships,{id:Date.now(),from:drw,to:id,type:rt}]);setDrw(null);}else setSel(id);};
+      const rts=[{id:'close',l:'Close',c:'#22c55e'},{id:'conflict',l:'Conflict',c:'#ef4444'},{id:'distant',l:'Distant',c:'#6b7280'},{id:'enmeshed',l:'Enmeshed',c:'#f59e0b'},{id:'cutoff',l:'Cut-off',c:'#dc2626'}];
+      const sm=d.family.find(m=>m.id===sel);
+      return(
+        <div className="p-8 space-y-6">
+          <header><h2 className="text-3xl font-light text-white mb-2">Family Systems</h2></header>
+          <div className="grid grid-cols-4 gap-6">
+            <div className="col-span-3"><Card t="Genogram" className="h-[550px]">
+              <div className="flex items-center gap-4 mb-4 pb-4 border-b border-gray-700"><span className="text-sm text-gray-400">Add:</span><button onClick={()=>addM('male')} className="p-2 rounded-lg bg-gray-800 hover:bg-gray-700"><I.Sq s={20} c="text-gray-400"/></button><button onClick={()=>addM('female')} className="p-2 rounded-lg bg-gray-800 hover:bg-gray-700"><I.Circ s={20} c="text-gray-400"/></button><button onClick={()=>addM('other')} className="p-2 rounded-lg bg-gray-800 hover:bg-gray-700"><I.Tri s={20} c="text-gray-400"/></button><div className="w-px h-6 bg-gray-700"/><button onClick={()=>addM('dec-m')} className="p-2 rounded-lg bg-gray-800 hover:bg-gray-700"><I.Sq s={20} c="text-gray-400" f/></button><button onClick={()=>addM('dec-f')} className="p-2 rounded-lg bg-gray-800 hover:bg-gray-700"><I.Circ s={20} c="text-gray-400" f/></button></div>
+              <div className="flex items-center gap-4 mb-4 pb-4 border-b border-gray-700"><span className="text-sm text-gray-400">Relationship:</span>{rts.map(t=>(<button key={t.id} onClick={()=>{setRt(t.id);if(sel)setDrw(sel);}} className={`px-3 py-1.5 rounded-lg text-xs ${rt===t.id&&drw?'bg-indigo-600 text-white':'bg-gray-800 text-gray-400'}`} style={{borderLeft:`3px solid ${t.c}`}}>{t.l}</button>))}{drw&&<button onClick={()=>setDrw(null)} className="px-3 py-1.5 rounded-lg text-xs bg-red-600/20 text-red-400">Cancel</button>}</div>
+              <div className="relative h-[350px] bg-gray-900/50 rounded-lg border border-gray-700 overflow-hidden">
+                <svg className="absolute inset-0 w-full h-full pointer-events-none">{d.relationships.map(r=>{const f=d.family.find(m=>m.id===r.from),t=d.family.find(m=>m.id===r.to);if(!f||!t)return null;const x=rts.find(y=>y.id===r.type);return<line key={r.id} x1={f.x} y1={f.y} x2={t.x} y2={t.y} stroke={x?.c||'#6b7280'} strokeWidth={r.type==='enmeshed'?4:2} strokeDasharray={r.type==='distant'?'5,5':r.type==='cutoff'?'2,8':''} className="cursor-pointer hover:opacity-50" onClick={()=>u('relationships',d.relationships.filter(y=>y.id!==r.id))}/>;})}</svg>
+                {d.family.map(m=>{const Ic=m.type.includes('f')?I.Circ:m.type==='other'?I.Tri:I.Sq;const dc=m.type.includes('dec');return(<div key={m.id} className={`absolute cursor-pointer transition-all ${sel===m.id?'scale-110':''} ${drw===m.id?'ring-2 ring-indigo-400':''}`} onClick={()=>click(m.id)} style={{left:m.x,top:m.y,transform:'translate(-50%,-50%)'}}><Ic s={40} c={`${m.isClient?'text-indigo-400':'text-gray-400'} ${sel===m.id?'text-white':''}`} f={dc}/>{m.name&&<div className="absolute top-full mt-1 left-1/2 -translate-x-1/2 text-xs text-gray-300 whitespace-nowrap">{m.name}{m.age&&<span className="text-gray-500 ml-1">({m.age})</span>}</div>}</div>);})}
+                {d.family.length===0&&<div className="absolute inset-0 flex items-center justify-center text-gray-500">Click symbols to add members</div>}
+              </div>
+            </Card></div>
+            <div className="col-span-1">
+              <Card t="Details" i={I.User}>{sm?(<div className="space-y-4"><Inp l="Name" v={sm.name} o={v=>updM(sel,'name',v)}/><Inp l="Age" v={sm.age} o={v=>updM(sel,'age',v)}/><div><label className="block text-sm text-gray-400 mb-2">Notes</label><textarea value={sm.notes} onChange={e=>updM(sel,'notes',e.target.value)} className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-200 text-sm h-20 resize-none"/></div><label className="flex items-center gap-2 text-sm text-gray-400"><input type="checkbox" checked={sm.isClient} onChange={e=>updM(sel,'isClient',e.target.checked)} className="rounded bg-gray-800 border-gray-600 text-indigo-500"/>Is Client</label><button onClick={()=>delM(sel)} className="w-full px-4 py-2 bg-red-600/20 text-red-400 rounded-lg text-sm">Delete</button></div>):<p className="text-gray-500 text-sm">Select a member</p>}</Card>
+              <Card t="Legend" className="mt-4"><div className="space-y-2 text-xs"><div className="grid grid-cols-2 gap-2"><div className="flex items-center gap-2"><I.Sq s={12} c="text-gray-400"/>Male</div><div className="flex items-center gap-2"><I.Circ s={12} c="text-gray-400"/>Female</div><div className="flex items-center gap-2"><I.Sq s={12} c="text-gray-400" f/>Deceased</div></div><div className="mt-3 pt-3 border-t border-gray-700 space-y-1">{rts.map(t=><div key={t.id} className="flex items-center gap-2"><div className="w-6 h-0.5" style={{backgroundColor:t.c}}/><span className="text-gray-400">{t.l}</span></div>)}</div></div></Card>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Conceptualization
+    function Concept({d,u}){
+      const fws=[{id:'cbt',n:'CBT',i:I.Tri},{id:'psychodynamic',n:'Psychodynamic',i:I.Layers},{id:'narrative',n:'Narrative',i:I.Book},{id:'systemic',n:'Systemic',i:I.Rotate},{id:'act',n:'ACT',i:I.Compass},{id:'ifs',n:'IFS',i:I.Users},{id:'schema',n:'Schema',i:I.Layers},{id:'eft',n:'EFT',i:I.Heart},{id:'ipt',n:'IPT',i:I.Users}];
+      return(
+        <div className="p-8 space-y-6">
+          <header><h2 className="text-3xl font-light text-white mb-2">Conceptualization</h2></header>
+          <Card t="Framework" i={I.Brain}><div className="flex flex-wrap gap-2">{fws.map(f=>(<button key={f.id} onClick={()=>u('framework',f.id)} className={`flex items-center gap-2 px-4 py-2 rounded-lg ${d.framework===f.id?'bg-indigo-600 text-white':'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}><f.i s={16}/>{f.n}</button>))}</div></Card>
+          {d.framework==='cbt'&&<Card t="Cognitive Triangle"><div className="grid grid-cols-2 gap-6"><TA l="Situation" v={d.concept.cbt.situation} o={v=>u('concept.cbt.situation',v)} p="What happened?" bc="amber"/><TA l="Thought" v={d.concept.cbt.thought} o={v=>u('concept.cbt.thought',v)} p="What went through your mind?" bc="indigo"/><TA l="Emotion" v={d.concept.cbt.emotion} o={v=>u('concept.cbt.emotion',v)} p="What did you feel?" bc="rose"/><TA l="Behavior" v={d.concept.cbt.behavior} o={v=>u('concept.cbt.behavior',v)} p="What did you do?" bc="emerald"/></div></Card>}
+          {d.framework==='psychodynamic'&&<Card t="Triangle of Conflict"><div className="grid grid-cols-3 gap-6"><TA l="Defense" v={d.concept.psychodynamic.defense} o={v=>u('concept.psychodynamic.defense',v)} p="What client does to avoid..." bc="violet"/><TA l="Anxiety" v={d.concept.psychodynamic.anxiety} o={v=>u('concept.psychodynamic.anxiety',v)} p="Signal emotion emerging..." bc="amber"/><TA l="Hidden Feeling" v={d.concept.psychodynamic.hidden} o={v=>u('concept.psychodynamic.hidden',v)} p="Warded-off experience..." bc="rose"/></div></Card>}
+          {d.framework==='narrative'&&<div className="grid grid-cols-2 gap-6"><Card t="Dominant Story" className="border-l-4 border-l-rose-500"><TA v={d.concept.narrative.dominant} o={v=>u('concept.narrative.dominant',v)} p="Problem-saturated narrative..."/></Card><Card t="Alternative Story" className="border-l-4 border-l-emerald-500"><TA v={d.concept.narrative.alternative} o={v=>u('concept.narrative.alternative',v)} p="Preferred narrative..."/></Card></div>}
+          {d.framework==='systemic'&&<Systemic d={d} u={u}/>}
+          {d.framework==='act'&&<div className="space-y-6"><Card t="ACT Hexaflex"><div className="grid grid-cols-3 gap-4">{ACT.map(p=>(<div key={p.id} className="p-3 bg-gray-800/30 rounded-lg border border-gray-700"><div className="text-sm font-medium text-indigo-400">{p.n}</div><div className="text-xs text-gray-500">vs {p.o}</div></div>))}</div></Card><div className="grid grid-cols-2 gap-6"><Card t="Avoided Experiences"><TA v={d.concept.act.avoided} o={v=>u('concept.act.avoided',v)} p="What private experiences?"/></Card><Card t="Avoidance Behaviors"><TA v={d.concept.act.avoidance} o={v=>u('concept.act.avoidance',v)} p="Behaviors used to avoid?"/></Card></div></div>}
+          {d.framework==='ifs'&&<Card t="IFS Parts Map"><div className="grid grid-cols-3 gap-6 mb-6"><div className="p-4 bg-blue-600/10 border border-blue-500/30 rounded-xl"><h4 className="text-blue-400 font-medium mb-2 flex items-center gap-2"><I.Shield s={16}/>Managers</h4><TA v={d.concept.ifs.managers} o={v=>u('concept.ifs.managers',v)} p="Proactive protectors..."/></div><div className="p-4 bg-rose-600/10 border border-rose-500/30 rounded-xl"><h4 className="text-rose-400 font-medium mb-2 flex items-center gap-2"><I.Heart s={16}/>Exiles</h4><TA v={d.concept.ifs.exiles} o={v=>u('concept.ifs.exiles',v)} p="Wounded parts..."/></div><div className="p-4 bg-amber-600/10 border border-amber-500/30 rounded-xl"><h4 className="text-amber-400 font-medium mb-2 flex items-center gap-2"><I.Zap s={16}/>Firefighters</h4><TA v={d.concept.ifs.firefighters} o={v=>u('concept.ifs.firefighters',v)} p="Reactive protectors..."/></div></div><div className="p-4 bg-indigo-600/10 border border-indigo-500/30 rounded-xl"><h4 className="text-indigo-400 font-medium mb-2">Self Energy</h4><p className="text-xs text-gray-500 mb-2">8 C's: Curiosity, Calm, Clarity, Compassion, Confidence, Courage, Creativity, Connectedness</p><TA v={d.concept.ifs.self} o={v=>u('concept.ifs.self',v)} p="Self-leadership availability..."/></div></Card>}
+          {d.framework==='schema'&&<Card t="Schema Therapy">{SCHEMAS.map(s=>(<div key={s.dom} className="p-4 bg-gray-800/30 rounded-lg mb-4"><h4 className="text-sm font-medium text-gray-300 mb-3">{s.dom}</h4><div className="flex flex-wrap gap-2">{s.list.map(x=>(<button key={x} onClick={()=>{const c=d.concept.schema.schemas||[];u('concept.schema.schemas',c.includes(x)?c.filter(y=>y!==x):[...c,x]);}} className={`px-3 py-1.5 rounded-full text-xs ${(d.concept.schema.schemas||[]).includes(x)?'bg-violet-600 text-white':'bg-gray-700 text-gray-400 hover:bg-gray-600'}`}>{x}</button>))}</div></div>))}</Card>}
+          {d.framework==='eft'&&<div className="space-y-6"><Card t="EFT Markers"><div className="grid grid-cols-2 gap-4">{[{id:'reaction',n:'Problematic Reaction',i:'Evocative Unfolding'},{id:'split',n:'Self-Evaluative Split',i:'Two-Chair'},{id:'unfinished',n:'Unfinished Business',i:'Empty Chair'},{id:'unclear',n:'Unclear Felt Sense',i:'Focusing'}].map(m=>(<div key={m.id} className="p-4 bg-gray-800/30 rounded-lg border border-gray-700"><div className="flex items-start justify-between"><div><h4 className="text-sm text-gray-200">{m.n}</h4><p className="text-xs text-indigo-400 mt-1">→ {m.i}</p></div><input type="checkbox" checked={(d.concept.eft.markers||[]).includes(m.id)} onChange={e=>u('concept.eft.markers',e.target.checked?[...(d.concept.eft.markers||[]),m.id]:(d.concept.eft.markers||[]).filter(x=>x!==m.id))} className="rounded bg-gray-800 border-gray-600 text-indigo-500"/></div></div>))}</div></Card><div className="grid grid-cols-2 gap-6"><Card t="Primary Emotions"><TA v={d.concept.eft.primary} o={v=>u('concept.eft.primary',v)} p="Core emotions..."/></Card><Card t="Secondary Emotions"><TA v={d.concept.eft.secondary} o={v=>u('concept.eft.secondary',v)} p="Obscuring emotions..."/></Card></div></div>}
+          {d.framework==='ipt'&&<div className="space-y-6"><Card t="IPT Problem Area"><div className="grid grid-cols-2 gap-4">{IPT.map(a=>(<button key={a.id} onClick={()=>u('concept.ipt.area',a.id)} className={`p-4 rounded-lg text-left ${d.concept.ipt.area===a.id?'bg-indigo-600/20 border-2 border-indigo-500':'bg-gray-800/30 border border-gray-700'}`}><h4 className={`font-medium ${d.concept.ipt.area===a.id?'text-indigo-400':'text-gray-200'}`}>{a.n}</h4><p className="text-xs text-gray-500 mt-1">{a.d}</p></button>))}</div></Card><Card t="Interpersonal Inventory"><TA v={d.concept.ipt.inventory} o={v=>u('concept.ipt.inventory',v)} p="Map relationships..." h={40}/></Card></div>}
+        </div>
+      );
+    }
+
+    function Systemic({d,u}){const [p,setP]=useState({a:'',b:''});const add=()=>{if(p.a&&p.b){u('concept.systemic.patterns',[...(d.concept.systemic.patterns||[]),{...p,id:Date.now()}]);setP({a:'',b:''});}};return(<Card t="Circular Causality"><div className="grid grid-cols-2 gap-4 mb-4"><div><label className="block text-sm text-gray-400 mb-2">When A does...</label><input value={p.a} onChange={e=>setP({...p,a:e.target.value})} className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-200 text-sm"/></div><div><label className="block text-sm text-gray-400 mb-2">B responds...</label><input value={p.b} onChange={e=>setP({...p,b:e.target.value})} className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-200 text-sm"/></div></div><button onClick={add} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm mb-4">Add Pattern</button><div className="space-y-3">{(d.concept.systemic.patterns||[]).map(x=>(<div key={x.id} className="flex items-center gap-4 p-4 bg-gray-800/30 rounded-lg"><div className="flex-1 text-center p-2 bg-blue-600/20 rounded">{x.a}</div><I.Rotate c="text-indigo-400"/><div className="flex-1 text-center p-2 bg-rose-600/20 rounded">{x.b}</div></div>))}</div></Card>);}
+
+    // Interventions
+    function Interventions({d,u}){
+      const [s,setS]=useState('');
+      const [exp,setExp]=useState(['Anxiety']);
+      const flt=INTERVENTIONS.map(c=>({...c,tools:c.tools.filter(t=>t.name.toLowerCase().includes(s.toLowerCase())||t.mod.toLowerCase().includes(s.toLowerCase()))})).filter(c=>c.tools.length>0);
+      const add=t=>{if(!d.plan.find(x=>x.id===t.id))u('plan',[...d.plan,{...t,progress:0,notes:''}]);};
+      const rem=id=>u('plan',d.plan.filter(t=>t.id!==id));
+      const upd=(id,f,v)=>u('plan',d.plan.map(t=>t.id===id?{...t,[f]:v}:t));
+      return(
+        <div className="p-8 space-y-6">
+          <header><h2 className="text-3xl font-light text-white mb-2">Interventions</h2></header>
+          <div className="grid grid-cols-2 gap-6 h-[calc(100vh-200px)]">
+            <Card t="Library" i={I.Book} className="flex flex-col overflow-hidden"><div className="relative mb-4"><I.Search s={18} c="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"/><input value={s} onChange={e=>setS(e.target.value)} placeholder="Search..." className="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-200 placeholder-gray-500"/></div><div className="flex-1 overflow-y-auto space-y-2 pr-2">{flt.map(c=>(<div key={c.cat} className="rounded-lg overflow-hidden"><button onClick={()=>setExp(p=>p.includes(c.cat)?p.filter(x=>x!==c.cat):[...p,c.cat])} className="w-full flex items-center justify-between p-3 bg-gray-800/50 hover:bg-gray-800"><span className="font-medium text-gray-200">{c.cat}</span><div className="flex items-center gap-2"><span className="text-xs text-gray-500">{c.tools.length}</span>{exp.includes(c.cat)?<I.ChevDown s={18}/>:<I.ChevRight s={18}/>}</div></button>{exp.includes(c.cat)&&(<div className="bg-gray-900/30 p-2 space-y-2">{c.tools.map(t=>(<div key={t.id} className="flex items-start gap-3 p-3 bg-gray-800/50 rounded-lg hover:bg-gray-800 group"><I.Grip s={16} c="text-gray-600 mt-1"/><div className="flex-1"><div className="flex items-center gap-2"><span className="font-medium text-gray-200 text-sm">{t.name}</span><span className="px-2 py-0.5 bg-gray-700 rounded text-xs text-gray-400">{t.mod}</span></div><p className="text-xs text-gray-500 mt-1">{t.desc}</p></div><button onClick={()=>add(t)} className="opacity-0 group-hover:opacity-100 p-1.5 bg-indigo-600 rounded hover:bg-indigo-500"><I.Plus s={14}/></button></div>))}</div>)}</div>))}</div></Card>
+            <Card t="Treatment Plan" i={I.Target} className="flex flex-col overflow-hidden"><div className="flex-1 overflow-y-auto space-y-3 pr-2">{d.plan.length===0?(<div className="flex flex-col items-center justify-center h-full text-gray-500"><I.Hand s={48} c="mb-4 opacity-50"/><p>Add interventions</p></div>):d.plan.map((t,i)=>(<div key={t.id} className="p-4 bg-gray-800/50 rounded-lg border border-gray-700"><div className="flex items-start justify-between mb-3"><div className="flex items-center gap-2"><span className="text-gray-400 text-sm">#{i+1}</span><span className="font-medium text-gray-200">{t.name}</span><span className="px-2 py-0.5 bg-indigo-600/20 text-indigo-400 rounded text-xs">{t.mod}</span></div><button onClick={()=>rem(t.id)} className="p-1 text-gray-500 hover:text-red-400"><I.X s={16}/></button></div><div className="mb-3"><div className="flex items-center justify-between text-xs mb-1"><span className="text-gray-500">Progress</span><span className="text-indigo-400">{t.progress}%</span></div><input type="range" min="0" max="100" value={t.progress} onChange={e=>upd(t.id,'progress',parseInt(e.target.value))} className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"/></div><textarea value={t.notes} onChange={e=>upd(t.id,'notes',e.target.value)} placeholder="Session notes..." className="w-full px-3 py-2 bg-gray-900/50 border border-gray-700 rounded-lg text-gray-300 placeholder-gray-600 text-xs h-16 resize-none"/></div>))}</div></Card>
+          </div>
+        </div>
+      );
+    }
+
+    // Reflections
+    function Reflect({d,u}){
+      const [txt,setTxt]=useState('');
+      const [tgs,setTgs]=useState([]);
+      const types=[{id:'ct',l:'Counter-Transference',i:I.Heart},{id:'hyp',l:'Hypothesis',i:I.Bulb},{id:'sup',l:'Supervision',i:I.Help},{id:'safety',l:'Safety Risk',i:I.Alert},{id:'parallel',l:'Parallel Process',i:I.Layers},{id:'alliance',l:'Alliance',i:I.Check},{id:'marker',l:'Client Marker',i:I.Target},{id:'barrier',l:'My Barrier',i:I.Shield}];
+      const add=()=>{if(txt.trim()){u('reflections',[...d.reflections,{id:Date.now(),text:txt.trim(),tags:tgs,timestamp:new Date().toISOString()}]);setTxt('');setTgs([]);}};
+      return(
+        <div className="p-8 space-y-6">
+          <header><h2 className="text-3xl font-light text-white mb-2">Process Notes</h2></header>
+          <Card t="Add Reflection" i={I.Book}><div className="mb-4"><label className="block text-sm text-gray-400 mb-2">Quick Tags</label><div className="flex flex-wrap gap-2">{types.map(t=>{const Ic=t.i;return<button key={t.id} onClick={()=>setTgs(p=>p.includes(t.id)?p.filter(x=>x!==t.id):[...p,t.id])} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs ${tgs.includes(t.id)?'bg-indigo-600/30 text-indigo-300 border border-indigo-500/50':'bg-gray-800 text-gray-400'}`}><Ic s={12}/>{t.l}</button>;})}</div></div><textarea value={txt} onChange={e=>setTxt(e.target.value)} placeholder="Process notes, observations, hypotheses..." className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-gray-200 placeholder-gray-500 h-40 resize-none"/><div className="flex justify-end mt-4"><button onClick={add} disabled={!txt.trim()} className="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-700 rounded-lg flex items-center gap-2"><I.Plus s={18}/>Add</button></div></Card>
+          <Card t="Session Reflections" i={I.File}>{d.reflections.length===0?(<div className="text-center py-8 text-gray-500"><I.Book s={48} c="mx-auto mb-4 opacity-50"/><p>No reflections yet</p></div>):[...d.reflections].reverse().map(r=>(<div key={r.id} className="p-4 bg-gray-800/30 rounded-lg border border-gray-700 mb-4"><div className="flex items-start justify-between mb-3"><span className="text-xs text-gray-500">{new Date(r.timestamp).toLocaleDateString()}</span><button onClick={()=>u('reflections',d.reflections.filter(x=>x.id!==r.id))} className="p-1 text-gray-500 hover:text-red-400"><I.X s={14}/></button></div>{r.tags.length>0&&<div className="flex flex-wrap gap-1.5 mb-3">{r.tags.map(tid=>{const t=types.find(x=>x.id===tid);if(!t)return null;const Ic=t.i;return<span key={tid} className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-gray-700 text-gray-300"><Ic s={10}/>{t.l}</span>;})}</div>}<p className="text-sm text-gray-300 whitespace-pre-wrap">{r.text}</p></div>))}</Card>
+          <Card t="My Personal Barriers (Confidential)" i={I.Shield} w><p className="text-xs text-gray-500 mb-4">From ACT: What shows up for me? <strong>Does NOT go into client notes.</strong></p><textarea placeholder="What hooks me?" className="w-full px-4 py-3 bg-gray-800 border border-amber-700/30 rounded-lg text-gray-200 placeholder-gray-500 h-32 resize-none"/></Card>
+        </div>
+      );
+    }
+
+    // Helpers
+    function Card({t,i:Ic,children,className='',w=false}){return(<div className={`rounded-xl border p-6 ${w?'bg-amber-950/20 border-amber-800/30':'bg-gray-900/50 border-gray-800'} ${className}`}>{t&&<div className="flex items-center gap-2 mb-4 pb-4 border-b border-gray-800">{Ic&&<Ic s={20} c="text-indigo-400"/>}<h3 className="font-medium text-gray-200">{t}</h3></div>}{children}</div>);}
+    function Inp({l,v,o,p,t='text'}){return(<div><label className="block text-sm font-medium text-gray-400 mb-2">{l}</label><input type={t} value={v||''} onChange={e=>o(e.target.value)} placeholder={p} className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-200 placeholder-gray-500 text-sm"/></div>);}
+    function Sel({l,v,o,op}){return(<div><label className="block text-sm font-medium text-gray-400 mb-2">{l}</label><select value={v||''} onChange={e=>o(e.target.value)} className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-200 text-sm">{op.map(x=><option key={x} value={x}>{x.charAt(0).toUpperCase()+x.slice(1)}</option>)}</select></div>);}
+    function Sld({l,v,o,a,b,c}){return(<div><label className="block text-sm font-medium text-gray-400 mb-3">{l}</label><input type="range" min="0" max="100" value={v||50} onChange={e=>o(parseInt(e.target.value))} className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"/><div className="flex justify-between text-xs text-gray-500 mt-1"><span className={v<30?'text-blue-400':''}>{a}</span><span className={v>=30&&v<=70?'text-emerald-400':''}>{b}</span><span className={v>70?'text-amber-400':''}>{c}</span></div></div>);}
+    function Tg({l,op,sel,o}){const tog=x=>o(sel.includes(x)?sel.filter(s=>s!==x):[...sel,x]);return(<div><label className="block text-sm font-medium text-gray-400 mb-3">{l}</label><div className="flex flex-wrap gap-2">{op.map(x=><button key={x} onClick={()=>tog(x)} className={`px-3 py-1.5 rounded-full text-xs ${sel.includes(x)?'bg-indigo-600 text-white':'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}>{x}</button>)}</div></div>);}
+    function TA({l,v,o,p,bc,h=24}){return(<div>{l&&<label className={`block text-sm mb-2 ${bc?`text-${bc}-400`:'text-gray-400'}`}>{l}</label>}<textarea value={v||''} onChange={e=>o(e.target.value)} placeholder={p} className={`w-full px-3 py-2 bg-gray-800 border ${bc?`border-${bc}-500/30`:'border-gray-700'} rounded-lg text-gray-200 text-sm resize-none`} style={{height:`${h*4}px`}}/></div>);}
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+  </script>
+</body>
+</html>
